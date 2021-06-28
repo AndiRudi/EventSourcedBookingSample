@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EventStore.ClientAPI;
-using EventStore.ClientAPI.Projections;
-using EventStore.ClientAPI.SystemData;
+using EventStore.Client;
+using Grpc.Core;
 
 namespace EventSourcedBookingSample
 {
@@ -13,39 +13,53 @@ namespace EventSourcedBookingSample
         {
             Console.WriteLine("Starting");
 
-            var connection = EventStoreConnection.Create(
-                new Uri("tcp://admin:changeit@localhost:1113")
-            );
-            
-            await connection.ConnectAsync();
+            //https://developers.eventstore.com/clients/grpc/getting-started/connecting.html#required-packages
 
-            Console.WriteLine("Connected");
+            var settings = EventStoreClientSettings
+                .Create("esdb://admin:changeit@localhost:1113");
+            
+            //Does not make any difference settings.ConnectivitySettings.Insecure = true;
+            var client = new EventStoreClient(settings);
+
+            Console.WriteLine("Connected. Appending Events");
 
             const string streamName = "newstream";
             const string eventType = "event-type";
             const string data = "{ \"a\":\"2\"}";
             const string metadata = "{}";
 
-            var eventPayload = new EventData(
-                eventId: Guid.NewGuid(),
+            var eventData = new EventData(
+                eventId: Uuid.NewUuid(),
                 type: eventType,
-                isJson: true,
                 data: Encoding.UTF8.GetBytes(data),
                 metadata: Encoding.UTF8.GetBytes(metadata)
             );
 
-            var result = await connection.AppendToStreamAsync(streamName, ExpectedVersion.Any, eventPayload);
+            var appendResult = await client.AppendToStreamAsync(
+                streamName: streamName,
+                expectedState: StreamState.Any,
+                eventData: new[] { eventData }
+            );
 
             Console.WriteLine("Event added");
 
-            var readEvents = await connection.ReadStreamEventsForwardAsync(streamName, 0, 10, true);
+            var result = client.ReadStreamAsync(
+                direction: Direction.Forwards,
+                streamName: streamName,
+                revision: StreamPosition.Start,
+                maxCount: 1
+            );
 
-            foreach (var evt in readEvents.Events)
+            var readState = await result.ReadState;
+            Console.WriteLine("$ReadState: {readState}");
+            
+            foreach (var evt in await result.ToListAsync())
             {
-                Console.WriteLine(Encoding.UTF8.GetString(evt.Event.Data));
+                Console.WriteLine(Encoding.UTF8.GetString(evt.Event.Data.ToArray()));
             }
 
             Console.WriteLine("Done");
+            Console.ReadKey();
         }
     }
 }
