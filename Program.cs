@@ -16,9 +16,9 @@ namespace EventSourcedBookingSample
             //https://developers.eventstore.com/clients/grpc/getting-started/connecting.html#required-packages
 
             var settings = EventStoreClientSettings
-                .Create("esdb://admin:changeit@localhost:1113");
-            
-            //Does not make any difference settings.ConnectivitySettings.Insecure = true;
+                .Create("esdb://admin:changeit@localhost:2113");
+
+            settings.ConnectivitySettings.Insecure = true;
             var client = new EventStoreClient(settings);
 
             Console.WriteLine("Connected. Appending Events");
