@@ -55,11 +55,11 @@ namespace EventSourcedBookingSample
         {
             await client.SubscribeToAllAsync(
                 start: Position.Start,
-                eventAppeared: EventReceivedAsync
+                eventAppeared: BookingProcessorAsync
             );
         }
 
-        static async Task EventReceivedAsync(StreamSubscription _, ResolvedEvent resolvedEvent, CancellationToken c)
+        static async Task BookingProcessorAsync(StreamSubscription _, ResolvedEvent resolvedEvent, CancellationToken c)
         {
             if (resolvedEvent.Event.EventType == "Booking.Created")
             {
